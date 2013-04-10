@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
     }
     
     int ret;
+    int bracket_depth;
     unsigned char command;
     while( (ret = fgetc( program )) != EOF ) {
         command = (unsigned char) ret;
@@ -72,10 +73,53 @@ int main(int argc, char **argv) {
                 break;
                 
             case '[':
-                
+                if( *pointer == 0 ) {
+                    bracket_depth = 1;
+                    while( bracket_depth > 0 ) {
+                        if( (ret = fgetc( program )) == EOF ) {
+                            if( ferror( program ) != 0 ) {
+                                die( "fgetc on program file failed" );
+                            }
+                            else {
+                                die( "no matching ] found" );
+                            }
+                        }
+                        
+                        if( ret == '[' ) {
+                            bracket_depth++;
+                        }
+                        else if( ret == ']' ) {
+                            bracket_depth--;
+                        }
+                    }
+                }
                 break;
+            
             case ']':
-                
+                if( *pointer != 0 ) {
+                    bracket_depth = 1;
+                    while( bracket_depth > 0 ) {
+                        if( fseek( program, -2, SEEK_CUR) == -1 ) {
+                            die_errno( "fseek on program file failed" );
+                        }
+                        
+                        if( (ret = fgetc( program )) == EOF ) {
+                            if( ferror( program ) != 0 ) {
+                                die( "fgetc on program file failed" );
+                            }
+                            else {
+                                die( "no matching [ found" );
+                            }
+                        }
+                        
+                        if( ret == ']' ) {
+                            bracket_depth++;
+                        }
+                        else if( ret == '[' ) {
+                            bracket_depth--;
+                        }
+                    }
+                }
                 break;
         }
     }
@@ -84,8 +128,8 @@ int main(int argc, char **argv) {
         die( "fgetc on program file failed" );
     }
     
-    if( close( program ) == EOF ) {
-        die_errno( "close on program file failed" );
+    if( fclose( program ) == EOF ) {
+        die_errno( "fclose on program file failed" );
     }
     
     return 0;
